@@ -1035,7 +1035,13 @@ if __name__ == "__main__":
         timeout_handler.daemon = True
         timeout_handler.start()
 
-        while i < args.runs:
+        num_sampled = 0
+        runs = args.runs
+
+        if args.sample_all:
+            runs = runs * len(sample_yamls)
+
+        while i < runs:
             if len(yamls_per_run_bounds) == 1:
                 yamls_this_run = yamls_per_run_bounds[0]
             else:
@@ -1044,7 +1050,17 @@ if __name__ == "__main__":
                     yamls_per_run_bounds[0], yamls_per_run_bounds[1] + 1
                 )
 
-            if args.sample_from:
+            if args.sample_from and args.sample_all:
+                actual_apworld = "sample_all"
+                yamls_to_write = [
+                    (f"sample-{i}-{nb}-{orig_name}", content)
+                    for nb, (orig_name, content) in enumerate(
+                        sample_yamls[num_sampled:num_sampled+yamls_this_run]
+                    )
+                ]
+                num_sampled += yamls_this_run
+                num_sampled %= len(sample_yamls)
+            elif args.sample_from:
                 actual_apworld = "sample"
                 yamls_to_write = [
                     (f"sample-{i}-{nb}-{orig_name}", content)
@@ -1114,6 +1130,8 @@ if __name__ == "__main__":
     parser.add_argument("--with-static-worlds", default=None)
     parser.add_argument("--sample-from", default=None,
                         help="Directory of YAML files to sample from instead of generating random YAMLs. Each generation picks N (see -n) random files from the directory. Incompatible with -g and -m")
+    parser.add_argument("--sample-all", action="store_true", default=False,
+                        help="Enables round-robin sampling of yamls. Interprets --runs as runs-per-yaml")
     parser.add_argument("--hook", action="append", default=[])
     parser.add_argument("--skip-output", default=False, action="store_true")
 
