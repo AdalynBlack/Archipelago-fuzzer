@@ -36,14 +36,14 @@ Empty: {}
             """)
         args.with_static_worlds = self._tmp.name
 
-        if os.path.isfile('/ap/empty.apworld'):
-            target_path = '/ap/archipelago/worlds/empty.apworld'
+        if os.path.isfile('empty.apworld'):
+            target_path = 'worlds/empty.apworld'
             if not os.path.exists(target_path):
-                shutil.copy('/ap/empty.apworld', target_path)
+                shutil.copy('empty.apworld', target_path)
 
     def setup_worker(self, args):
         if 'Empty' not in AutoWorldRegister.world_types:
-            target_path = '/ap/archipelago/worlds/empty.apworld'
+            target_path = 'worlds/empty.apworld'
             if os.path.exists(target_path):
                 world_name = Path(target_path).stem
                 importer = zipimport.zipimporter(target_path)
