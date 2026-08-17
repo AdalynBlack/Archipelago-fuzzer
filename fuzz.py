@@ -595,6 +595,11 @@ def call_generate(yaml_path, fuzz_args, output_path):
     settings = get_settings()
     args = mystery_argparse([])
 
+    meta_path = "meta-doesnt-exist.yaml"
+
+    if fuzz_args.sample_from and fuzz_args.meta:
+        meta_path = fuzz_args.meta
+
     vars(args).update(
         {
             "weights_file_path": settings.generator.weights_file_path,
@@ -605,7 +610,7 @@ def call_generate(yaml_path, fuzz_args, output_path):
             "spoiler": 1,
             "outputpath": output_path,
             "race": False,
-            "meta_file_path": "meta-doesnt-exist.yaml",
+            "meta_file_path": meta_path,
             "log_level": "info",
             "yaml_output": 1,
             "plando": PlandoOptions.items | PlandoOptions.connections | PlandoOptions.texts | PlandoOptions.bosses,
@@ -922,10 +927,6 @@ if __name__ == "__main__":
                 raise Exception(
                     "--sample-from is incompatible with -g/--game"
                 )
-            if args.meta:
-                raise Exception(
-                    "--sample-from is incompatible with -m/--meta"
-                )
 
         if args.meta:
             with open(args.meta, "r", encoding='utf-8-sig') as fd:
@@ -1129,7 +1130,7 @@ if __name__ == "__main__":
     parser.add_argument("--dump-ignored", default=False, action="store_true")
     parser.add_argument("--with-static-worlds", default=None)
     parser.add_argument("--sample-from", default=None,
-                        help="Directory of YAML files to sample from instead of generating random YAMLs. Each generation picks N (see -n) random files from the directory. Incompatible with -g and -m")
+                        help="Directory of YAML files to sample from instead of generating random YAMLs. Each generation picks N (see -n) random files from the directory. Incompatible with -g")
     parser.add_argument("--sample-all", action="store_true", default=False,
                         help="Enables round-robin sampling of yamls. Interprets --runs as runs-per-yaml")
     parser.add_argument("--hook", action="append", default=[])
