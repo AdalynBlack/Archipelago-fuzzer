@@ -54,6 +54,10 @@ from functools import wraps
 from io import StringIO
 from multiprocessing import Pool
 
+from pathlib import Path
+from scipy.stats import ttest_ind
+from math import isnan
+
 import gc
 import importlib
 import json
@@ -829,15 +833,53 @@ def error(yamls_dir, apworld_name, i, args, raised):
         print("This is most likely a fuzzer bug and should be reported")
 
 
-def print_status():
+def print_status(args):
     print()
-    print("Success:", SUCCESS)
+    print("Success: ", SUCCESS)
     print("Failures:", FAILURE)
     print("Timeouts:", TIMEOUTS)
-    print("Ignored:", OPTION_ERRORS)
+    print("Ignored: ", OPTION_ERRORS)
     print()
     print("Time taken: {:.2f}s".format(time.perf_counter() - START))
 
+    if args.compare_previous is None:
+        return
+
+    with open(args.compare_previous, "r") as f:
+        previous_stats = json.loads(f.read())["stats"]
+    
+    success = previous_stats["success"]
+    failure = previous_stats["failure"]
+
+    # Add one failure and one success to avoid catastrophic cancellation
+    fake_new_data  = [100, 0]
+    fake_new_data += [100 for _ in range(SUCCESS)]
+    fake_new_data += [0 for _ in range(FAILURE)]
+
+    # Add one failure and one success to avoid catastrophic cancellation
+    fake_previous_data  = [100, 0]
+    fake_previous_data = [100 for _ in range(success)]
+    fake_previous_data += [0 for _ in range(failure)]
+
+    print("")
+    print("Independent T-Test Results")
+    result = ttest_ind(fake_new_data, fake_previous_data)
+
+    if isnan(result.statistic):
+        print( "T-Test failed due to low precision")
+        return
+
+    print(f"T-Statistic: {result.statistic:.1f}")
+    print(f"P-Value:     {result.pvalue:.2E}")
+
+    confidence = result.confidence_interval(confidence_level=.99)
+    print(f"99% Confidence Interval (low):  {confidence.low:.1f}%")
+    print(f"99% Confidence Interval (high): {confidence.high:.1f}%")
+
+    if confidence.high < 0:
+        print("Failure rate probably increased")
+    elif confidence.low > 0:
+        print("Failure rate probably decreased")
 
 def find_hook(hook_path):
     modulepath, objectpath = hook_path.split(':')
@@ -1135,6 +1177,7 @@ if __name__ == "__main__":
                         help="Enables round-robin sampling of yamls. Interprets --runs as runs-per-yaml")
     parser.add_argument("--hook", action="append", default=[])
     parser.add_argument("--skip-output", default=False, action="store_true")
+    parser.add_argument("-c", "--compare-previous", default=None, type=Path, help="Pick a specific run to compare against using an independent T-test")
 
     args = parser.parse_args()
 
@@ -1168,7 +1211,7 @@ if __name__ == "__main__":
             MANAGER._process.kill()
 
         if not crashed:
-            print_status()
+            print_status(args)
             write_report(REPORT)
             os._exit((FAILURE + TIMEOUTS) != 0)
 
